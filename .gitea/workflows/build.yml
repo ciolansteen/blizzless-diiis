@@ -11,10 +11,13 @@ jobs:
     container:
       image: mcr.microsoft.com/dotnet/sdk:7.0
     steps:
+      - name: Install Node.js
+        run: apt-get update -qq && apt-get install -y nodejs
+
       - uses: actions/checkout@v3
 
       - name: Restore dependencies
         run: dotnet restore src/DiIiS-NA/Blizzless.csproj
 
-      - name: Build (Release)
-        run: dotnet build src/DiIiS-NA/Blizzless.csproj -c Release --no-restore
+      - name: Publish (Release)
+        run: dotnet publish src/DiIiS-NA/Blizzless.csproj -c Release --runtime linux-x64 --self-contained true -o /publish
