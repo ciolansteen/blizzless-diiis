@@ -2,7 +2,6 @@
 FROM mcr.microsoft.com/dotnet/sdk:7.0 AS build
 WORKDIR /app
 
-
 # Copy the project file and restore dependencies
 COPY ["src/DiIiS-NA/Blizzless.csproj", "src/DiIiS-NA/"]
 RUN dotnet restore "src/DiIiS-NA/Blizzless.csproj"
