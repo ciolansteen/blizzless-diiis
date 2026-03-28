@@ -11,6 +11,8 @@ COPY ["src/", "src/"]
 WORKDIR "/app/src/DiIiS-NA"
 RUN dotnet publish "Blizzless.csproj" -c Release --runtime linux-x64 --self-contained true -o /app/publish
 
+RUN echo "muie steaua"
+
 # Use the official .NET runtime image to run the application
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
 WORKDIR /app
