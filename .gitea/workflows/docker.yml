@@ -6,6 +6,10 @@ on:
       - main
       - test-stable
       - wsl-docker
+    paths:
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - 'src/**'
 
 jobs:
   docker:
@@ -14,5 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      - name: Login to Gitea Registry
+        run: echo "${{ secrets.REGISTRY_TOKEN }}" | docker login git.ciolan.net -u "${{ secrets.REGISTRY_USER }}" --password-stdin
+
       - name: Build Docker image
-        run: docker build -t blizzless-diiis:${{ gitea.sha }} .
+        run: docker build -t git.ciolan.net/gaming/blizzless-diiis:${{ gitea.sha }} -t git.ciolan.net/gaming/blizzless-diiis:latest .
+
+      - name: Push Docker image
+        run: |
+          docker push git.ciolan.net/gaming/blizzless-diiis:${{ gitea.sha }}
+          docker push git.ciolan.net/gaming/blizzless-diiis:latest
