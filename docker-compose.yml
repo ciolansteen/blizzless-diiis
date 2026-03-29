@@ -2,7 +2,7 @@ services:
   diiis-na-server:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: docker/Dockerfile
     container_name: diiis-na-server
     stdin_open: true
     env_file: .env

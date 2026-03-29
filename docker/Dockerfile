@@ -11,16 +11,27 @@ COPY ["src/", "src/"]
 WORKDIR "/app/src/DiIiS-NA"
 RUN dotnet publish "Blizzless.csproj" -c Release --runtime linux-x64 --self-contained true -o /app/publish
 
-RUN echo "muie steaua"
-
 # Use the official .NET runtime image to run the application
 FROM mcr.microsoft.com/dotnet/aspnet:7.0 AS runtime
+WORKDIR /app
+
+# envsubst (from gettext-base) is used by entrypoint.sh to substitute env vars into config files
+RUN apt-get update && apt-get install -y --no-install-recommends gettext-base && rm -rf /var/lib/apt/lists/*
 WORKDIR /app
 
 # Copy the published application from the build stage
 COPY --from=build /app/publish .
 
+# Copy config templates into container (envsubst will generate real config files at startup)
+COPY src/DiIiS-NA/database.Account.config.template /app/database.Account.config.template
+COPY src/DiIiS-NA/database.Worlds.config.template /app/database.Worlds.config.template
+COPY src/DiIiS-NA/config.ini.template /app/config.ini.template
+
+# Copy entrypoint script (substitutes DB env vars into NHibernate config files at startup)
+COPY docker/entrypoint.sh /app/entrypoint.sh
+
 # Expose the port your application is running on (if needed)
-EXPOSE 1345 1119 83 2001 9800 9100
+EXPOSE 83 1119 1345 2001 9100 9800
+
 # Start the application
-ENTRYPOINT ["./Blizzless"]
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
