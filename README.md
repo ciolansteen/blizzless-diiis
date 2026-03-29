@@ -73,9 +73,9 @@ The currently supported version of the client: **2.7.4.84161**
 | `DB_PORT`     | `5432`        | PostgreSQL port                                                                                  |
 | `DB_USER`     | `postgres`    | PostgreSQL user                                                                                  |
 | `DB_PASSWORD` | `postgres`    | PostgreSQL password                                                                              |
-| `BIND_IP`     | `0.0.0.0`     | Interface the server listens on (`0.0.0.0` = all)                                                |
+| `BIND_IP`     | `0.0.0.0`     | Interface the server listens on (0.0.0.0 = all)                                                |
 | `REST_IP`     | `0.0.0.0`     | Interface the REST login server listens on                                                       |
-| `PUBLIC_IP`   | `127.0.0.1`   | IP advertised to D3 clients IP**                                                                 |
+| `PUBLIC_IP`   | `127.0.0.1`   | IP advertised to D3 clients (default is localhost only)                                                                 |
 | `LOG_MODE`    | `Console`     | Log output: `Console` (plain, for docker logs), `Ansi` (table, for interactive terminal), `file` |
 | `LOG_LEVEL`   | `Info`        | Min log level: `MethodTrace` -> `Debug` -> `Trace` -> `Info` -> `Warn` -> `Error` -> `Fatal`     |
 
