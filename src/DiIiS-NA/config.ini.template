@@ -115,18 +115,18 @@ PublicIP = ${PUBLIC_IP}
   ; AnsiLog for visualization, ConsoleLog for debugging, and PacketLog for packet analysis
 
   [AnsiLog]
-  Enabled = true
+  Enabled = ${ANSI_ENABLED}
   Target = Ansi
   IncludeTimeStamps = true
-  MinimumLevel = MethodTrace
-  MaximumLevel = Fatal
+  MinimumLevel = ${LOG_LEVEL_MIN}
+  MaximumLevel = ${LOG_LEVEL_MAX}
 
   [ConsoleLog]
-  Enabled = false
+  Enabled = ${CONSOLE_ENABLED}
   Target = Console
   IncludeTimeStamps = true
-  MinimumLevel = MethodTrace
-  MaximumLevel = Fatal
+  MinimumLevel = ${LOG_LEVEL_MIN}
+  MaximumLevel = ${LOG_LEVEL_MAX}
 
   [PacketLog]
   Enabled = true
