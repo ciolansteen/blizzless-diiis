@@ -1,0 +1,333 @@
+#+TITLE: Blizzless D3 Server -- Docker Setup Roadmap
+#+AUTHOR: iAdrian
+#+DATE: [2026-03-26 Wed]
+#+SEQ_TODO: TODO STRT WAIT | DONE PIN
+#+STARTUP: overview
+
+* Overview
+Self-hosted Diablo III private server (blizzless-diiis) via Docker Compose pe Arch Linux / Docker Desktop (WSL2).
+Scopul acestui document: track fix-urile necesare sa porneasca si sa functioneze corect in Docker,
+cu ochii si pe ce trimitem eventual upstream.
+
+** Stack
+| Component       | Tech                               |
+|-----------------+------------------------------------|
+| Game server     | .NET 7, build din sursa            |
+| Database        | PostgreSQL 17                      |
+| Container setup | Docker Compose + custom Dockerfile |
+| Auth flow       | REST HTTP :83 + Battle TLS :1119   |
+
+** Ports
+| Port | Service                |
+|------+------------------------|
+|   83 | REST login/auth        |
+| 1119 | Battle server (client) |
+| 1345 | Game server            |
+| 2001 | --                     |
+| 9800 | Battle WebPort         |
+| 9100 | --                     |
+
+** Paths
+- Compose :: =/opt/compose/gamservers/blizzless-diiis/=
+- Config :: =/app/config.ini= (generat din =config.ini.template= la startup)
+- DB configs :: =/app/database.Account.config= + =database.Worlds.config= (generate din .template la startup)
+
+** Upstream
+- GitHub :: https://github.com/blizzless/blizzless-diiis
+- Fork (mirror) :: https://github.com/ciolansteen/blizzless-diiis
+- Gitea (local) :: https://git.ciolan.net/Gaming/blizzless-diiis
+- Branch activ :: =wsl-docker= (bazat pe =test-stable=)
+
+** Comenzi utile
+#+BEGIN_SRC bash
+# Restart fara rebuild
+docker compose up -d --force-recreate diiis-na-server
+
+# Full rebuild de la 0
+docker compose down
+docker compose build --no-cache
+docker compose up
+
+# Logs live
+docker logs -f diiis-na-server
+
+# Account management (in server console sau docker exec -it diiis-na-server sh)
+!account add email@ Parola123 BattleTag [owner|admin|gm|user]
+!account setuserlevel email@ owner
+!account setpassword email@ NovaParola
+#+END_SRC
+Reguli: login trebuie sa contina =@=, parola 8-16 chars, battletag fara =#=.
+
+-------------------------------------------------------------------------------
+* Faza 1: Docker -- Fix-uri Infrastructure [2/6]
+Toate fix-urile din aceasta faza sunt in =docker/=, =Dockerfile=, =docker-compose.yml= sau config files.
+Fara modificari in =src/=. Commituri pe branch =wsl-docker=.
+
+** DONE Fix 1: DB Connection la Startup                              :docker:
+CLOSED: [2026-03-26]
+Gitea: https://git.ciolan.net/Gaming/blizzless-diiis/issues/1
+
+NHibernate folosea =Server=localhost= -- nu merge in Docker (DB-ul e pe service name =diiis-na-db=).
+
+*** Solutia finala (clean)
+Pattern: fisierele originale =.config= raman identice cu upstream (=Server=localhost=).
+Template-urile =.config.template= contin placeholders, sunt procesate de =entrypoint.sh= la startup.
+
+Fisiere noi:
+- =docker/entrypoint.sh= :: substituie env vars in toate config-urile via =envsubst= la startup
+- =src/DiIiS-NA/database.Account.config.template= :: placeholder version a Account config
+- =src/DiIiS-NA/database.Worlds.config.template= :: placeholder version a Worlds config
+- =.env.template= :: template pentru toate variabilele de mediu
+- =.env= :: valori reale (gitignored)
+
+Modificari fisiere existente:
+- =Dockerfile= :: instaleaza =gettext-base= (pentru =envsubst=), COPY template-uri, ENTRYPOINT
+- =docker-compose.yml= :: adauga =env_file: .env=
+- =.gitignore= :: adauga =.env=
+
+*** Continut fisiere
+
+**** docker/entrypoint.sh
+#+BEGIN_SRC sh
+#!/bin/sh
+set -e
+
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_USER="${DB_USER:-postgres}"
+DB_PASSWORD="${DB_PASSWORD:-postgres}"
+
+BIND_IP="${BIND_IP:-0.0.0.0}"
+REST_IP="${REST_IP:-0.0.0.0}"
+PUBLIC_IP="${PUBLIC_IP:-127.0.0.1}"
+
+for cfg in database.Account.config database.Worlds.config; do
+    envsubst < "/app/${cfg}.template" > "/app/${cfg}"
+done
+
+envsubst < /app/config.ini.template > /app/config.ini
+
+exec ./Blizzless
+#+END_SRC
+
+**** src/DiIiS-NA/database.Account.config.template
+Connection string cu placeholders (unica diferenta fata de original):
+: Server=${DB_HOST};Port=${DB_PORT};Database=diiis;User ID=${DB_USER};Password=${DB_PASSWORD}
+
+**** src/DiIiS-NA/database.Worlds.config.template
+: Server=${DB_HOST};Port=${DB_PORT};Database=worlds;User ID=${DB_USER};Password=${DB_PASSWORD}
+
+**** .env.template
+#+BEGIN_SRC sh
+# Database connection (used by entrypoint.sh at container startup)
+DB_HOST=diiis-na-db
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+
+# PostgreSQL container (must match DB_* above)
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_DB=diablo
+
+# Server IP bindings
+# BIND_IP: interface the server listens on (0.0.0.0 = all interfaces, required for Docker)
+BIND_IP=0.0.0.0
+# REST_IP: interface the REST login server listens on
+REST_IP=0.0.0.0
+# PUBLIC_IP: IP advertised to the D3 client (must be reachable from client machine)
+PUBLIC_IP=127.0.0.1
+#+END_SRC
+
+**** Dockerfile (sectiunea runtime, dupa FROM aspnet:7.0)
+#+BEGIN_SRC dockerfile
+# envsubst (from gettext-base) is used by entrypoint.sh to substitute env vars into config files
+RUN apt-get update && apt-get install -y --no-install-recommends gettext-base && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy the published application from the build stage
+COPY --from=build /app/publish .
+
+# Copy DB config templates (envsubst generates .config files at startup)
+COPY src/DiIiS-NA/database.Account.config.template /app/database.Account.config.template
+COPY src/DiIiS-NA/database.Worlds.config.template /app/database.Worlds.config.template
+
+# Copy config template (envsubst will generate config.ini at startup)
+COPY src/DiIiS-NA/config.ini.template /app/config.ini.template
+
+# Copy entrypoint script
+COPY docker/entrypoint.sh /app/entrypoint.sh
+
+EXPOSE 1345 1119 83 2001 9800 9100
+
+ENTRYPOINT ["/bin/sh", "/app/entrypoint.sh"]
+#+END_SRC
+
+**** docker-compose.yml (diiis-na-server service)
+#+BEGIN_SRC yaml
+diiis-na-server:
+  build:
+    context: .
+    dockerfile: Dockerfile
+  container_name: diiis-na-server
+  stdin_open: true
+  env_file: .env
+  environment:
+    - DOTNET_EnableDiagnostics=0
+  ports:
+    - 83:83
+    - 1119:1119
+    - 1345:1345
+    - 2001:2001
+    - 9800:9800
+    - 9100:9100
+  depends_on:
+    db:
+      condition: service_healthy
+#+END_SRC
+Nota: fara volume mount pentru config.ini -- generat din template la startup.
+
+*** Istoric commits (de referinta, nu de aplicat)
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/6fceea8][6fceea8]] fix: use env vars for DB connection instead of hardcoded localhost
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/9aaa395][9aaa395]] fix: use .env file and Dockerfile ENV for DB configuration
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/f2b6928][f2b6928]] chore: use envsubst for DB config templating, add ROADMAP
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/45b08ba][45b08ba]] chore: remove hardcoded ENV defaults from Dockerfile
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/1868685][1868685]] refactor: restore original .config files, add .template variants for Docker
+
+** DONE Fix 2: CPU 100% pe Server Idle                               :docker:
+CLOSED: [2026-03-26] -- workaround in compose, fix proper in Fix 5
+Gitea: https://git.ciolan.net/Gaming/blizzless-diiis/issues/2
+
+Root cause: =Console.ReadLine()= in Docker (stdin=EOF, fara TTY) returneaza =null= instant.
+Main loop face =continue= pe null -> spin loop infinit (~1.3M read() syscalls/sec, un core complet).
+
+Investigatie:
+1. Round 1 :: =AnsiLog= cu =MinimumLevel=MethodTrace= -> sute log/sec -> fix nivel =Info=
+2. Round 2 :: CLR debug pipes in =/tmp= busy-polled -> fix =DOTNET_EnableDiagnostics=0=
+3. Round 3 :: =ReadLine()= null spin -> fix =stdin_open: true= in compose
+
+*** Solutia finala (workaround)
+In =docker-compose.yml= pe serviciul =diiis-na-server=:
+#+BEGIN_SRC yaml
+stdin_open: true
+environment:
+  - DOTNET_EnableDiagnostics=0
+#+END_SRC
+
+Workaround -- fix proper in sursa (Fix 5).
+
+*** Istoric commits
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/8656716][8656716]] fix: keep stdin open to prevent ReadLine() spin loop (refs #2)
+
+** DONE Fix 3: REST + Server Sockets -- IP Binding                   :config:
+CLOSED: [2026-03-27] -- implementat via config.ini.template
+Gitea: https://git.ciolan.net/Gaming/blizzless-diiis/issues/3
+
+Toate socket-urile bind pe =127.0.0.1= -> Docker nu face port forwarding din loopback.
+=PublicIP= e si el =127.0.0.1= -> D3 primeste URL gresit pentru login.
+
+*** Solutia finala
+Implementata in =config.ini.template= (parte din Fix 1 clean):
+| Camp       | Sectiune         | Valoare template |
+|------------+------------------+------------------|
+| BindIP     | [Battle-Server]  | =${BIND_IP}=     |
+| IP         | [REST]           | =${REST_IP}=     |
+| PublicIP   | [REST]           | =${PUBLIC_IP}=   |
+| BindIP     | [Game-Server]    | =${BIND_IP}=     |
+| PublicIP   | [NAT]            | =${PUBLIC_IP}=   |
+
+Valorile vin din =.env=:
+- =BIND_IP=0.0.0.0= (asculta pe toate interfetele)
+- =REST_IP=0.0.0.0=
+- =PUBLIC_IP=<LAN IP al masinii>= -- trebuie setat manual
+
+*** Istoric commits
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/df7ed8d][df7ed8d]] fix: use envsubst for config.ini IP bindings via template
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/c618780][c618780]] fix: remove empty volumes key from diiis-na-server in compose
+
+** TODO Fix 4: SessionManager.Initialize() Lipseste din Program.cs   :source:
+Gitea: https://git.ciolan.net/Gaming/blizzless-diiis/issues/4
+
+Simptom: client conectat pe 1119, TLS ok, =AuthenticationService= atins, disconnect imediat.
+
+Consecinte:
+1. REST returneaza ={inputs:[]}= -> D3 nu afiseaza form de login
+2. =BNetServer.pfx= inexistent in container -> crash daca =Initialize()= e apelat naiv
+
+Fix in =src/DiIiS-NA/Program.cs= (inainte de pornirea REST, ~linia 227):
+#+BEGIN_SRC csharp
+SessionManager.Instance.Initialize();
+var restSocketServer = new SocketManager<RestSession>();
+#+END_SRC
+
+Fix in =src/DiIiS-NA/REST/Manager/SessionManager.cs= (linia 61 -- cert e optional):
+#+BEGIN_SRC csharp
+try { _certificate = new X509Certificate2("BNetServer.pfx"); }
+catch { /* cert file is optional -- REST runs over HTTP */ }
+#+END_SRC
+
+** TODO Fix 5: ReadLine() Spin Loop -- Fix in Sursa                  :source:
+Source change -- candidat PR upstream.
+Inchide issue #2 (=fixes #2= in commit message).
+
+=stdin_open: true= in compose e workaround. Fix-ul corect in =Program.cs=:
+#+BEGIN_SRC csharp
+if (line == null)
+{
+    Thread.Sleep(1000); // prevent spin loop when stdin is EOF in Docker
+    continue;
+}
+#+END_SRC
+Dupa fix, =stdin_open: true= poate fi scos din compose.
+
+** TODO Fix 6: PR Upstream                                           :upstream:
+Dupa Fix 4 + Fix 5 testate local.
+
+Pasi:
+- [ ] Branch =fix/docker-login-and-spinloop= din =community=
+- [ ] Aplica Fix 4 (SessionManager) + Fix 5 (Thread.Sleep)
+- [ ] PR -> =blizzless/blizzless-diiis= pe branch =community=
+- [ ] Documenteaza Fix 3 (REST IP) ca recomandare in PR description
+
+-------------------------------------------------------------------------------
+* Faza 2: Calitate & Portabilitate [0/2]
+
+** TODO Installer / Setup Script                                      :future:
+In prezent, setup-ul necesita pasi manuali (copiat .env, editat PUBLIC_IP, etc.).
+Un script de setup ar trebui sa:
+- genereze =.env= din =.env.template= interactiv (sau cu defaults)
+- genereze config-urile locale (non-Docker) din template-uri
+
+** PIN Config Templates per Setup                                     :future:
+Acelasi set de template-uri trebuie sa functioneze atat in Docker (cu env vars)
+cat si local (cu valori hardcodate, generat de installer).
+
+Solutia pe termen lung -- parte din Faza 2 Installer.
+
+-------------------------------------------------------------------------------
+* Note Tehnice
+
+** REST Auth Flow
+D3 -> port 1119 (TLS) -> server trimite URL =http://PUBLIC_IP:83/battlenet/login=
+-> D3 GET (form) -> POST (credentiale) -> ticket -> verificat pe 1119.
+Daca REST nu raspunde sau form e gol -> disconnect imediat, eroare 14003.
+
+** Thread Profiling fara strace (in container)
+#+BEGIN_SRC bash
+cat /proc/1/task/<TID>/stat   # utime+stime jiffies
+cat /proc/1/task/<TID>/wchan  # 0 = running (nu blocheaza)
+cat /proc/1/task/<TID>/io     # syscr = numar read() calls
+#+END_SRC
+Semnatura spin loop: =wchan=0=, =stime= creste, =syscr= ~1.3M/sec, =rchar=33 bytes total.
+
+** DOTNET_EnableDiagnostics=0
+Elimina =clr-debug-pipe-*= si =dotnet-diagnostic-*= din =/tmp=.
+Recomandat pentru productie / containere.
+
+** envsubst vs sed
+Initial folosit =sed -i= cu regex pentru substituire valori in XML.
+Inlocuit cu =envsubst= (pachetul =gettext-base=) -- mai simplu, fara regex fragil,
+lucreaza direct cu =${VAR}= placeholders din fisiere.
+Pattern adoptat: fisierele originale raman identice cu upstream,
+=.template= variants contin placeholders, procesate la container startup.
