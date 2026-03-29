@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: diiis-na-server
     stdin_open: true
+    env_file: .env
     volumes:
      - ./src/DiIiS-NA/config.ini:/app/config.ini
     ports:
@@ -14,7 +15,6 @@ services:
       - 2001:2001
       - 9800:9800
       - 9100:9100
-      
     depends_on:
       db:
         condition: service_healthy
@@ -22,10 +22,7 @@ services:
   db:
     image: postgres:17
     container_name: diiis-na-db
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=diablo
+    env_file: .env
     ports:
       - 5432:5432
     volumes:
