@@ -58,7 +58,27 @@ The currently supported version of the client: **2.7.4.84161**
 
 #### Or using docker
 1. [Install docker](https://docs.docker.com/get-docker/)
-2. Run `docker-compose up` from root folder (here).
+2. Copy `.env.template` to `.env` and configure:
+   ```sh
+   cp .env.template .env
+   ```
+3. Set `PUBLIC_IP` in `.env` to your LAN IP (the IP reachable by D3 clients).
+4. Run `docker compose up` from root folder.
+
+##### Environment Variables (`.env`)
+
+| Variable      | Default       | Description                                                                                      |
+|---------------|---------------|--------------------------------------------------------------------------------------------------|
+| `DB_HOST`     | `diiis-na-db` | PostgreSQL hostname (Docker service name)                                                        |
+| `DB_PORT`     | `5432`        | PostgreSQL port                                                                                  |
+| `DB_USER`     | `postgres`    | PostgreSQL user                                                                                  |
+| `DB_PASSWORD` | `postgres`    | PostgreSQL password                                                                              |
+| `BIND_IP`     | `0.0.0.0`     | Interface the server listens on (`0.0.0.0` = all)                                                |
+| `REST_IP`     | `0.0.0.0`     | Interface the REST login server listens on                                                       |
+| `PUBLIC_IP`   | `127.0.0.1`   | IP advertised to D3 clients - **must be your LAN IP**                                            |
+| `LOG_MODE`    | `Console`     | Log output: `Console` (plain, for docker logs), `Ansi` (table, for interactive terminal), `file` |
+| `LOG_LEVEL`   | `Info`        | Min log level: `MethodTrace` -> `Debug` -> `Trace` -> `Info` -> `Warn` -> `Error` -> `Fatal`     |
+
 
 ### Compile and run
 1. Install [.NET 7 SDK and runtime](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (just runtime, not asp.net or desktop)
