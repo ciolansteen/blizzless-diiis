@@ -48,6 +48,64 @@ Each version of the client includes changes to structures, opcodes and attribute
 
 The currently supported version of the client: **2.7.4.84161**
 
+## Logging
+
+### LOG_MODE
+
+| Value     | Description                                                                 |
+|-----------|-----------------------------------------------------------------------------|
+| Console | Plain text output — recommended for Docker (docker logs)                  |
+| Ansi    | Spectre.Console live table — for interactive terminals only (not Docker)    |
+
+> ⚠️ Ansi and Console cannot be active simultaneously — server will crash.
+
+---
+
+### LOG_LEVEL
+
+Log levels are filtered by range: all levels **between** MinimumLevel and MaximumLevel (inclusive) are shown.
+
+Levels fall into 3 natural categories:
+
+#### Social
+| Value              | Int | Description                          |
+|--------------------|-----|--------------------------------------|
+| RenameAccountLog |  0  | Account rename events                |
+| ChatMessage      |  1  | In-game chat messages                |
+| BotCommand       |  2  | Console/bot commands                 |
+
+#### Runtime
+| Value         | Int | Description                           |
+|---------------|-----|---------------------------------------|
+| Debug       |  3  | Detailed debug output                 |
+| MethodTrace |  4  | Method entry/exit tracing             |
+| Trace       |  5  | General trace messages                |
+| Info        |  6  | Normal operational messages           |
+| Success     |  7  | Successful operations                 |
+| Warn        |  8  | Non-critical warnings                 |
+| Error       |  9  | Recoverable errors                    |
+| Fatal       | 10  | Unrecoverable errors                  |
+
+#### Game
+| Value        | Int | Description                            |
+|--------------|-----|----------------------------------------|
+| QuestInfo  | 11  | Quest state information                |
+| QuestStep  | 12  | Individual quest step events           |
+| PacketDump | 13  | Raw packet hex dumps                   |
+
+---
+
+### Common presets
+
+| Use case              | LOG_LEVEL         | What you see                         |
+|-----------------------|---------------------|--------------------------------------|
+| Full debug (all)      | RenameAccountLog  | Social + Runtime + Game              |
+| Runtime only          | Debug             | Runtime + Game (no social noise)     |
+| Production            | Info              | Info → Fatal only                    |
+| Game events only      | QuestInfo         | Quest + PacketDump                   |
+
+> Default in .env.template: LOG_MODE=Console, LOG_LEVEL=Info
+
 ## Server Deploying
 ### Prepare Database
 #### Manual
@@ -231,3 +289,4 @@ You can see more screenshots [here](SCREENSHOTS.md)
 ![](pictures/d36.PNG)
 ![](pictures/d37.PNG)
 ![](pictures/d38.PNG)
+
