@@ -59,7 +59,7 @@ docker logs -f diiis-na-server
 Reguli: login trebuie sa contina =@=, parola 8-16 chars, battletag fara =#=.
 
 -------------------------------------------------------------------------------
-* Faza 1: Docker -- Fix-uri Infrastructure [2/6]
+* Faza 1: Docker -- Fix-uri Infrastructure [3/6]
 Toate fix-urile din aceasta faza sunt in =docker/=, =Dockerfile=, =docker-compose.yml= sau config files.
 Fara modificari in =src/=. Commituri pe branch =wsl-docker=.
 
@@ -189,9 +189,7 @@ diiis-na-server:
 Nota: fara volume mount pentru config.ini -- generat din template la startup.
 
 *** Istoric commits
-- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/6f38269][6f38269]] fix: DB connection fails on startup - Server=localhost invalid in Docker
-- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/98e5385][98e5385]] fix: REST and server sockets bind to 127.0.0.1 (entrypoint, templates, config.ini.template)
-- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/db409ec][db409ec]] fix: modify Dockerfile to use entrypoint.sh + move Dockerfile to docker/
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/6f38269][6f38269]] DB connection fails on startup - Server=localhost invalid in Docker
 
 ** DONE Fix 2: CPU 100% pe Server Idle                               :docker:
 CLOSED: [2026-03-26] -- workaround in compose, fix proper in Fix 5
@@ -216,7 +214,7 @@ environment:
 Workaround -- fix proper in sursa (Fix 5).
 
 *** Istoric commits
-- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/1c606ac][1c606ac]] fix: CPU 100% on idle - add stdin_open + DOTNET_EnableDiagnostics=0 (Closes #2)
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/1c606ac][1c606ac]] The server consumes ~100% CPU on a single core even with zero players connected and not fully starting (the terminal isn't active although ports are opened)
 
 ** DONE Fix 3: REST + Server Sockets -- IP Binding                   :config:
 CLOSED: [2026-03-27] -- implementat via config.ini.template
@@ -241,7 +239,7 @@ Valorile vin din =.env=:
 - =PUBLIC_IP=<LAN IP al masinii>= -- trebuie setat manual
 
 *** Istoric commits
-- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/98e5385][98e5385]] fix: REST and server sockets bind to 127.0.0.1 via config.ini.template + envsubst
+- [[https://git.ciolan.net/Gaming/blizzless-diiis/commit/98e5385][98e5385]] REST and server sockets bind to 127.0.0.1 — unreachable from outside of the container
 
 ** TODO Fix 4: SessionManager.Initialize() Lipseste din Program.cs   :source:
 Gitea: https://git.ciolan.net/Gaming/blizzless-diiis/issues/4
