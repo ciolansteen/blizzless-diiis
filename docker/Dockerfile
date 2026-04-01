@@ -27,6 +27,10 @@ COPY src/DiIiS-NA/database.Account.config.template /app/database.Account.config.
 COPY src/DiIiS-NA/database.Worlds.config.template /app/database.Worlds.config.template
 COPY src/DiIiS-NA/config.ini.template /app/config.ini.template
 
+# Copy certificate inside container - https://git.ciolan.net/Gaming/blizzless-diiis/issues/8
+#COPY src/DiIiS-NA/bnetserver.p12 /app/BNetServer.pfx
+COPY README.md /app/BNetServer.pfx
+
 # Copy entrypoint script (substitutes DB env vars into NHibernate config files at startup)
 COPY docker/entrypoint.sh /app/entrypoint.sh
 

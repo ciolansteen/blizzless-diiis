@@ -8,6 +8,7 @@ services:
     env_file: .env
     volumes:
      - ./src/DiIiS-NA/config.ini:/app/config.ini
+    tty: true
     ports:
       - 83:83
       - 1119:1119

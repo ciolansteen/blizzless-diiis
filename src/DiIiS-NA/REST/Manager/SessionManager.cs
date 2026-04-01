@@ -3,6 +3,7 @@ using DiIiS_NA.REST.Extensions;
 using DiIiS_NA.Core.Logging;
 
 using System.Net;
+using System.IO;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
@@ -64,6 +65,11 @@ namespace DiIiS_NA.REST.Manager
             try
             {
                 _certificate = new X509Certificate2("BNetServer.pfx", "123");
+            }
+            catch (FileNotFoundException)
+            {
+                Logger.Fatal("Certificate BNetServer.pfs not found - check if file exists.");
+                return false;
             }
             catch (CryptographicException e)
             {

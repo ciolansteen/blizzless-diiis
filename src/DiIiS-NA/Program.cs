@@ -224,6 +224,8 @@ namespace DiIiS_NA
                 Logger.Fatal("Diablo III Core - Disabled");
             }
 
+            if (!SessionManager.Instance.Initialize())
+                throw new Exception("Failed to initialize SessionManager");
             var restSocketServer = new SocketManager<RestSession>();
             if (!restSocketServer.StartNetwork(RestServerIp, RestConfig.Instance.Port))
                 throw new Exception($"Failed to start REST server on {RestServerIp}:{RestConfig.Instance.Port} - please check your configuration and if the port is in use.");
