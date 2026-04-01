@@ -259,38 +259,46 @@ namespace DiIiS_NA
 
                 Logger.Info("$[bold deeppink4]$Gracefully$[/]$ shutdown with $[red3_1]$CTRL+C$[/]$ or $[deeppink4]$!q[uit]$[/]$.");
                 Logger.Info("{0}", IsCancellationRequested());
-                while (!IsCancellationRequested())
+                // Correct check if stdin is available (e.g Docker without tty) - block until shutdown signal is given
+                if (Console.IsInputRedirected)
                 {
-                    var line = Console.ReadLine();
-                    if(line == null){
-                        continue;
-                    }
-                    if (line == "!q" || line == "!quit" || line == "!exit")
+                    await Task.Delay(Timeout.Infinite, Token);
+                }
+                else
+                {
+                    while (!IsCancellationRequested())
                     {
-                        Logger.Info("Break !quit");
-                        break;
-                    }
-
-                    if (line == "!cls" || line == "!clear" || line == "cls" || line == "clear")
-                    {
-                        AnsiConsole.Clear();
-                        AnsiConsole.Cursor.SetPosition(0, 0);
-                        continue;
-                    }
-
-                    if (line.StartsWith("!sno", StringComparison.OrdinalIgnoreCase))
-                    {
-                        if (IsTargetEnabled("ansi"))
-                            Console.Clear();
+                        var line = Console.ReadLine();
+                        if(line == null){
+                            continue;
+                        }
+                        if (line == "!q" || line == "!quit" || line == "!exit")
+                        {
+                            Logger.Info("Break !quit");
+                            break;
+                        }
                         
-                        MPQStorage.Data.SnoBreakdown(
-                            line.Equals("!sno 1", StringComparison.OrdinalIgnoreCase) || 
-                            line.Equals("!sno true", StringComparison.OrdinalIgnoreCase)
-                        );
-                        continue;
-                    }
+                        if (line == "!cls" || line == "!clear" || line == "cls" || line == "clear")
+                        {
+                            AnsiConsole.Clear();
+                            AnsiConsole.Cursor.SetPosition(0, 0);
+                            continue;
+                        }
+                        
+                        if (line.StartsWith("!sno", StringComparison.OrdinalIgnoreCase))
+                        {
+                            if (IsTargetEnabled("ansi"))
+                                Console.Clear();
+                            
+                            MPQStorage.Data.SnoBreakdown(
+                                line.Equals("!sno 1", StringComparison.OrdinalIgnoreCase) || 
+                                line.Equals("!sno true", StringComparison.OrdinalIgnoreCase)
+                            );
+                            continue;
+                        }
 
-                    CommandManager.Parse(line);
+                        CommandManager.Parse(line);
+                    }
                 }
 
                 if (PlayerManager.OnlinePlayers.Count > 0)
