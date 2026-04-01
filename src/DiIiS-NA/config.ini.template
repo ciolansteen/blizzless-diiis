@@ -38,7 +38,7 @@ MotdRemoteUrl = https://your-site.local/yourmotd
 IP = ${REST_IP}
 PublicIP = ${PUBLIC_IP}
 PORT = 83
-Public = false
+Public = true
 
 ; Game Server Settings
 [Game-Server]
