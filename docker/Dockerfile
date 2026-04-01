@@ -4,6 +4,8 @@ WORKDIR /app
 
 # Copy the project file and restore dependencies
 COPY ["src/DiIiS-NA/Blizzless.csproj", "src/DiIiS-NA/"]
+# referenced in Blizzless.csproj - needed for dotnet restore
+COPY ["src/DiIiSNet/BZNET.csproj", "src/DiIiSNet/"] 
 RUN dotnet restore "src/DiIiS-NA/Blizzless.csproj"
 
 # Copy the rest of the project files and build the application
