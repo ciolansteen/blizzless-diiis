@@ -1,6 +1,10 @@
-﻿using DiIiS_NA.REST.Data.Forms;
+using DiIiS_NA.REST.Data.Forms;
 using DiIiS_NA.REST.Extensions;
+using DiIiS_NA.Core.Logging;
+
 using System.Net;
+using System.IO;
+using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
 
 namespace DiIiS_NA.REST.Manager
@@ -58,8 +62,20 @@ namespace DiIiS_NA.REST.Manager
             input.Label = "Log In";
             _formInputs.Inputs.Add(input);
 
-            _certificate = new X509Certificate2("BNetServer.pfx");
-
+            try
+            {
+                _certificate = new X509Certificate2("BNetServer.pfx", "123");
+            }
+            catch (FileNotFoundException)
+            {
+                Logger.Fatal("Certificate BNetServer.pfs not found - check if file exists.");
+                return false;
+            }
+            catch (CryptographicException e)
+            {
+                Logger.Fatal($"Failed to load certificate BNetServer.pfx: {e.Message}");
+                return false;
+            }
             return true;
         }
 
@@ -81,6 +97,7 @@ namespace DiIiS_NA.REST.Manager
             return _certificate;
         }
 
+        private static readonly Logger Logger = LogManager.CreateLogger();
         FormInputs _formInputs;
         IPEndPoint _externalAddress;
         IPEndPoint _localAddress;

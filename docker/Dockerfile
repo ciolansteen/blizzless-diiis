@@ -4,6 +4,8 @@ WORKDIR /app
 
 # Copy the project file and restore dependencies
 COPY ["src/DiIiS-NA/Blizzless.csproj", "src/DiIiS-NA/"]
+# referenced in Blizzless.csproj - needed for dotnet restore
+COPY ["src/DiIiSNet/BZNET.csproj", "src/DiIiSNet/"] 
 RUN dotnet restore "src/DiIiS-NA/Blizzless.csproj"
 
 # Copy the rest of the project files and build the application
@@ -26,6 +28,9 @@ COPY --from=build /app/publish .
 COPY src/DiIiS-NA/database.Account.config.template /app/database.Account.config.template
 COPY src/DiIiS-NA/database.Worlds.config.template /app/database.Worlds.config.template
 COPY src/DiIiS-NA/config.ini.template /app/config.ini.template
+
+# Copy certificate inside container - https://git.ciolan.net/Gaming/blizzless-diiis/issues/8
+COPY src/DiIiS-NA/bnetserver.p12 /app/BNetServer.pfx
 
 # Copy entrypoint script (substitutes DB env vars into NHibernate config files at startup)
 COPY docker/entrypoint.sh /app/entrypoint.sh

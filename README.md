@@ -48,6 +48,64 @@ Each version of the client includes changes to structures, opcodes and attribute
 
 The currently supported version of the client: **2.7.4.84161**
 
+## Logging
+
+### LOG_MODE
+
+| Value     | Description                                                                 |
+|-----------|-----------------------------------------------------------------------------|
+| Console | Plain text output — recommended for Docker (docker logs)                  |
+| Ansi    | Spectre.Console live table — for interactive terminals only (not Docker)    |
+
+> ⚠️ Ansi and Console cannot be active simultaneously — server will crash.
+
+---
+
+### LOG_LEVEL
+
+Log levels are filtered by range: all levels **between** MinimumLevel and MaximumLevel (inclusive) are shown.
+
+Levels fall into 3 natural categories:
+
+#### Social
+| Value              | Int | Description                          |
+|--------------------|-----|--------------------------------------|
+| RenameAccountLog |  0  | Account rename events                |
+| ChatMessage      |  1  | In-game chat messages                |
+| BotCommand       |  2  | Console/bot commands                 |
+
+#### Runtime
+| Value         | Int | Description                           |
+|---------------|-----|---------------------------------------|
+| Debug       |  3  | Detailed debug output                 |
+| MethodTrace |  4  | Method entry/exit tracing             |
+| Trace       |  5  | General trace messages                |
+| Info        |  6  | Normal operational messages           |
+| Success     |  7  | Successful operations                 |
+| Warn        |  8  | Non-critical warnings                 |
+| Error       |  9  | Recoverable errors                    |
+| Fatal       | 10  | Unrecoverable errors                  |
+
+#### Game
+| Value        | Int | Description                            |
+|--------------|-----|----------------------------------------|
+| QuestInfo  | 11  | Quest state information                |
+| QuestStep  | 12  | Individual quest step events           |
+| PacketDump | 13  | Raw packet hex dumps                   |
+
+---
+
+### Common presets
+
+| Use case              | LOG_LEVEL         | What you see                         |
+|-----------------------|---------------------|--------------------------------------|
+| Full debug (all)      | RenameAccountLog  | Social + Runtime + Game              |
+| Runtime only          | Debug             | Runtime + Game (no social noise)     |
+| Production            | Info              | Info → Fatal only                    |
+| Game events only      | QuestInfo         | Quest + PacketDump                   |
+
+> Default in .env.template: LOG_MODE=Console, LOG_LEVEL=Info
+
 ## Server Deploying
 ### Prepare Database
 #### Manual
@@ -58,7 +116,27 @@ The currently supported version of the client: **2.7.4.84161**
 
 #### Or using docker
 1. [Install docker](https://docs.docker.com/get-docker/)
-2. Run `docker-compose up` from root folder (here).
+2. Copy `.env.template` to `.env` and configure:
+   ```sh
+   cp .env.template .env
+   ```
+3. Set `PUBLIC_IP` in `.env` to your LAN IP (the IP reachable by D3 clients).
+4. Run `docker compose up` from root folder.
+
+##### Environment Variables (`.env`)
+
+| Variable      | Default       | Description                                                                                      |
+|---------------|---------------|--------------------------------------------------------------------------------------------------|
+| `DB_HOST`     | `diiis-na-db` | PostgreSQL hostname (Docker service name)                                                        |
+| `DB_PORT`     | `5432`        | PostgreSQL port                                                                                  |
+| `DB_USER`     | `postgres`    | PostgreSQL user                                                                                  |
+| `DB_PASSWORD` | `postgres`    | PostgreSQL password                                                                              |
+| `BIND_IP`     | `0.0.0.0`     | Interface the server listens on (0.0.0.0 = all)                                                |
+| `REST_IP`     | `0.0.0.0`     | Interface the REST login server listens on                                                       |
+| `PUBLIC_IP`   | `127.0.0.1`   | IP advertised to D3 clients (default is localhost only)                                                                 |
+| `LOG_MODE`    | `Console`     | Log output: `Console` (plain, for docker logs), `Ansi` (table, for interactive terminal), `file` |
+| `LOG_LEVEL`   | `Info`        | Min log level: `MethodTrace` -> `Debug` -> `Trace` -> `Info` -> `Warn` -> `Error` -> `Fatal`     |
+
 
 ### Compile and run
 1. Install [.NET 7 SDK and runtime](https://dotnet.microsoft.com/en-us/download/dotnet/7.0) (just runtime, not asp.net or desktop)
@@ -211,3 +289,4 @@ You can see more screenshots [here](SCREENSHOTS.md)
 ![](pictures/d36.PNG)
 ![](pictures/d37.PNG)
 ![](pictures/d38.PNG)
+
