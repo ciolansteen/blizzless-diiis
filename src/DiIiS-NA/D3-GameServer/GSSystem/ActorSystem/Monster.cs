@@ -130,22 +130,40 @@ namespace DiIiS_NA.GameServer.GSSystem.ActorSystem
 			Attributes[GameAttributes.Hitpoints_Max] = maxHP;
             Attributes[GameAttributes.Hitpoints_Max_Percent_Bonus_Multiplicative] = bonus;
 
-            var baseHp = Attributes[GameAttributes.Hitpoints_Max];
+            // FIX: Hitpoints_Max_Total este un atribut 'scripted' (calculat automat de engine din Hitpoints_Max + bonusuri).
+            // Nu poate fi setat direct - Living.cs:38 documenteaza exact asta: //scripted
+            // Anterior codul calcula baseHp, aplica multiplicatorii si incerca sa-l asigneze la Hitpoints_Max_Total
+            // => spam de erori "illegal value assignment" la fiecare UpdateStats() call (fiecare tick, fiecare monstru).
+            // Fix: aplicam toti multiplicatorii direct pe Hitpoints_Max (singurul settable),
+            // iar Hitpoints_Max_Total se calculeaza singur de catre engine.
+
+            // OLD (cauza spam de erori la fiecare tick):
+            //var baseHp = Attributes[GameAttributes.Hitpoints_Max];
+            //var baseDamage = Attributes[GameAttributes.Damage_Weapon_Min, 0];
+            //baseHp *= bonus;
+            //baseDamage *= bonus;
+            //baseHp *= GameModsConfig.Instance.Monster.HealthMultiplier;
+            //baseDamage *= GameModsConfig.Instance.Monster.DamageMultiplier;
+            //Attributes[GameAttributes.Hitpoints_Max_Total] = baseHp;   // <-- eroare: scripted, nu se poate seta direct
+            //Attributes[GameAttributes.Damage_Weapon_Min, 0] = baseDamage;
+            //Attributes[GameAttributes.Hitpoints_Cur] = Attributes[GameAttributes.Hitpoints_Max_Total];
+
+            // NEW: aplicam doar HealthMultiplier direct pe Hitpoints_Max (settable). bonus e gestionat de engine via Hitpoints_Max_Percent_Bonus_Multiplicative.
             var baseDamage = Attributes[GameAttributes.Damage_Weapon_Min, 0];
-
-			// Apply calculated scaling
-            baseHp *= bonus;
             baseDamage *= bonus;
-
-            // Apply configuration modifiers
-            baseHp *= GameModsConfig.Instance.Monster.HealthMultiplier;
             baseDamage *= GameModsConfig.Instance.Monster.DamageMultiplier;
 
-            // Assign modified values 
-            Attributes[GameAttributes.Hitpoints_Max_Total] = baseHp;
+            // Hitpoints_Max primeste valoarea finala cu HealthMultiplier din config.
+            // bonus NU se aplica aici - e deja stocat in Hitpoints_Max_Percent_Bonus_Multiplicative
+            // si engine-ul il aplica singur in formula scriptata a lui Hitpoints_Max_Total:
+            // Max((Hitpoints_Max + ...) * ... * Hitpoints_Max_Percent_Bonus_Multiplicative, 1)
+            // Daca l-am aplica si aici, bonus-ul s-ar dubla.
+            Attributes[GameAttributes.Hitpoints_Max] *= GameModsConfig.Instance.Monster.HealthMultiplier;
             Attributes[GameAttributes.Damage_Weapon_Min, 0] = baseDamage;
+
+            // Citim HP-ul din Hitpoints_Max (nu din Hitpoints_Max_Total care e scripted)
             //if (full_hp)
-            Attributes[GameAttributes.Hitpoints_Cur] = Attributes[GameAttributes.Hitpoints_Max_Total];
+            Attributes[GameAttributes.Hitpoints_Cur] = Attributes[GameAttributes.Hitpoints_Max];
 
 			Attributes.BroadcastChangedIfRevealed();
 		}
